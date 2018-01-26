@@ -1,0 +1,39 @@
+<html>
+
+<head>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous"></script>
+    <script>
+
+        function download() {
+            var settings = {
+                "async": true,
+                "crossDomain": true,
+                "url": "http://0.0.0.0:3002/api/v1/generateUTCFile",
+                "method": "POST",
+                "headers": {
+                    "content-type": "application/x-www-form-urlencoded",
+                    "cache-control": "no-cache",
+                    "postman-token": "62a65211-6309-3772-8966-4cd247b4669a"
+                },
+                "data": {
+                    "password": "test",
+                    "privateKey": "0xf14eaa33840b669b64592b361ebf29cddc6bbfac0a9544f99e5ab5e9a062b502"
+                }
+            }
+
+            $.ajax(settings).done(function (response) {
+                console.log(response);
+                document.getElementById("utc").href = response.filepath;
+                document.getElementById("utc").download = response.filepath;
+            });
+        }    
+    </script>
+</head>
+
+<body>
+    <button onclick="download()">Generate</button>
+    <a id="utc" href="">Download</a>
+</body>
+
+</html>
