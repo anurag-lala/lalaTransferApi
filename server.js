@@ -76,9 +76,8 @@ app.post('/api/v1/generateUTCFile', (request, response) => {
 		'Content-Length': stat.size
 	});
 
-	//var readStream = fileSystem.createReadStream(filePath);
-	response.download(filePath,"karthikn.json");
-	//readStream.pipe(response);
+	var readStream = fileSystem.createReadStream(filePath);
+	readStream.pipe(response);
 
 });
 
