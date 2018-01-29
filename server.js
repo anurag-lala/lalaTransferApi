@@ -32,54 +32,63 @@ app.post('/api/v1/generatePrivateKey', (request, response) => {
 
 	const token = request.body.token;
 
+	const password = request.body.password;
+
 
 	if (token == null) {
 		response.json({ "status": "0", "message": "Please Provide Token", "EncryptedPrivateKey": "NULL" });
 	}
 	const account = web3.eth.accounts.create();
+	const etherAddress = account.address;
 	const privateKey = account.privateKey;
+
+	const keyObject = web3.eth.accounts.encrypt(privateKey, password);
+	//console.log(keyObject);
+	const utcfile = keythereum.exportToFile(keyObject);
+
+	const keystorePath=path.join(__dirname,utcfile);
+
+	var arr = keystorePath.split("/");
+	//console.log(arr);
+	const fileName=arr[arr.length-1];
+	
+
 	//console.log(privateKey);
 	var EncryptedPrivateKey = CryptoJS.AES.encrypt(privateKey, token);
 	var EncryptedPrivateKeyString = CircularJSON.stringify(EncryptedPrivateKey);
 
 	if (EncryptedPrivateKey != null) {
 
-		response.json({ "status": "1", "message": "Request Successfully", "EncryptedPrivateKey": EncryptedPrivateKeyString });
+		response.json({ "status": "1", "message": "Request Successfully","data":{ "EncryptedPrivateKey": EncryptedPrivateKeyString,"etherAddress": etherAddress , "keystorePath": keystorePath, "fileName":fileName }});
 	} else {
-		response.json({ "status": "0", "message": "Request Failed", "EncryptedPrivateKey": "NULL" });
+		response.json({ "status": "0", "message": "Request Failed", "data": {} });
 	}
 
 });
 
-// Rest API for generating UTC file
+// Rest API for getting UTC file
 
-app.post('/api/v1/generateUTCFile', (request, response) => {
+app.post('/api/v1/getUTCFile', (request, response)=>{
 
-	//const passwordbytes  = CryptoJS.AES.decrypt(request.body.password.toString(), 'secret key 123');
-	//const password = passwordbytes.toString(CryptoJS.enc.Utf8);
-	const password = request.body.password;
-
-	const privateKey = request.body.privateKey;
-	//console.log(privateKey); 
-	const keyObject = web3.eth.accounts.encrypt(privateKey, password);
-	//console.log(keyObject);
-	const utcfile = keythereum.exportToFile(keyObject);
-
-	const __dirname = "./";
-
-	var filePath = path.join(__dirname, utcfile);
-
-	var stat = fileSystem.statSync(filePath);
-
-	response.writeHead(200, {
-		'Content-Type': 'utc-8',
-		'Content-Length': stat.size
-	});
-
-	var readStream = fileSystem.createReadStream(filePath);
-	readStream.pipe(response);
-
+	var filePath = request.body.filePath;
+	//console.log(filePath);
+	var arr = filePath.split("/");
+	//console.log(arr);
+	const fileName=arr[arr.length-1];
+	if(fileSystem.existsSync(filePath)) {
+	var check = fileSystem.readFileSync(filePath);
+        response.setHeader('Content-Type', 'application/json');
+        response.setHeader('Content-Disposition', 'attachment; filename='+fileName);
+        response.write(check, 'binary');
+		response.end();
+	}else{
+		response.write("File not found");
+        response.end();
+    
+	}
+	 
 });
+
 
 //  Rest API for checking Ether Balance
 
