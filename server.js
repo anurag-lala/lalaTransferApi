@@ -51,7 +51,7 @@ app.post('/api/v1/generatePrivateKey', (request, response) => {
 	//console.log(arr);
 	const fileName=arr[arr.length-1];
 	
-	const apiPath = "http://0.0.0.0:3002/api/v1/getUTCFile/"+fileName ;
+	const apiPath = "http://35.165.211.141:3002/api/v1/getUTCFile/"+fileName ;
 
 	//console.log(privateKey);
 	var EncryptedPrivateKey = CryptoJS.AES.encrypt(privateKey, token);
