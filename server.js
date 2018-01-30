@@ -31,9 +31,7 @@ web3 = new Web3(new Web3.providers.HttpProvider("https://ropsten.infura.io/YmYCy
 app.post('/api/v1/generatePrivateKey', (request, response) => {
 
 	const token = request.body.token;
-
 	const password = request.body.password;
-
 
 	if (token == null) {
 		response.json({ "status": "0", "message": "Please Provide Token", "EncryptedPrivateKey": "NULL" });
@@ -43,6 +41,7 @@ app.post('/api/v1/generatePrivateKey', (request, response) => {
 	const privateKey = account.privateKey;
 
 	const keyObject = web3.eth.accounts.encrypt(privateKey, password);
+
 	//console.log(keyObject);
 	const utcfile = keythereum.exportToFile(keyObject);
 
@@ -52,7 +51,7 @@ app.post('/api/v1/generatePrivateKey', (request, response) => {
 	//console.log(arr);
 	const fileName=arr[arr.length-1];
 	
-	const apiPath = "http://35.165.211.141:3002/api/v1/getUTCFile/"+fileName ;
+	const apiPath = "http://0.0.0.0:3002/api/v1/getUTCFile/"+fileName ;
 
 	//console.log(privateKey);
 	var EncryptedPrivateKey = CryptoJS.AES.encrypt(privateKey, token);
@@ -60,7 +59,7 @@ app.post('/api/v1/generatePrivateKey', (request, response) => {
 
 	if (EncryptedPrivateKey != null) {
 
-		response.json({ "status": "1", "message": "Request Successfully","data":{ "EncryptedPrivateKey": EncryptedPrivateKeyString,"etherAddress": etherAddress , "keystorePath": keystorePath, "fileName":fileName, "apiPath":apiPath }});
+		response.json({ "status": "1", "message": "Request Successfully","data":{ "EncryptedPrivateKey": EncryptedPrivateKeyString,"keyObject":keyObject,"etherAddress": etherAddress ,"fileName":fileName, "apiPath":apiPath }});
 	} else {
 		response.json({ "status": "0", "message": "Request Failed", "data": {} });
 	}
