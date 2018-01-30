@@ -52,6 +52,7 @@ app.post('/api/v1/generatePrivateKey', (request, response) => {
 	//console.log(arr);
 	const fileName=arr[arr.length-1];
 	
+	const apiPath = "http://35.165.211.141:3002/api/v1/getUTCFile/"+fileName ;
 
 	//console.log(privateKey);
 	var EncryptedPrivateKey = CryptoJS.AES.encrypt(privateKey, token);
@@ -59,7 +60,7 @@ app.post('/api/v1/generatePrivateKey', (request, response) => {
 
 	if (EncryptedPrivateKey != null) {
 
-		response.json({ "status": "1", "message": "Request Successfully","data":{ "EncryptedPrivateKey": EncryptedPrivateKeyString,"etherAddress": etherAddress , "keystorePath": keystorePath, "fileName":fileName }});
+		response.json({ "status": "1", "message": "Request Successfully","data":{ "EncryptedPrivateKey": EncryptedPrivateKeyString,"etherAddress": etherAddress , "keystorePath": keystorePath, "fileName":fileName, "apiPath":apiPath }});
 	} else {
 		response.json({ "status": "0", "message": "Request Failed", "data": {} });
 	}
@@ -68,27 +69,25 @@ app.post('/api/v1/generatePrivateKey', (request, response) => {
 
 // Rest API for getting UTC file
 
-app.post('/api/v1/getUTCFile', (request, response)=>{
+app.get('/api/v1/getUTCFile/:fileName', (request, response)=>{
 
-	var filePath = request.body.filePath;
+	var filePath = 'keystore/' + request.params.fileName;
 	//console.log(filePath);
 	var arr = filePath.split("/");
 	//console.log(arr);
-	const fileName=arr[arr.length-1];
+	const fileName = request.params.fileName;
 	if(fileSystem.existsSync(filePath)) {
 	var check = fileSystem.readFileSync(filePath);
         response.setHeader('Content-Type', 'application/json');
         response.setHeader('Content-Disposition', 'attachment; filename='+fileName);
         response.write(check, 'binary');
 		response.end();
+		//after sending... delete generated file
 	}else{
 		response.write("File not found");
         response.end();
-    
 	}
-	 
-});
-
+})
 
 //  Rest API for checking Ether Balance
 
