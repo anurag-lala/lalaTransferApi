@@ -104,11 +104,11 @@ app.post('/api/v1/getEtherBalance', (request, response) => {
 	const ether_address = request.body.etherAddress;
 	if (web3.utils.isAddress(ether_address)) {
 		const amount = web3.eth.getBalance(ether_address).then(function (amount) {
-			response.json({ "status": "1", "message": "Request Successfully", "Balance": web3.utils.fromWei(amount, 'ether') });
+			response.json({ "status": "1", "message": "Request Successfully", "balance": web3.utils.fromWei(amount, 'ether') });
 		});
 
 	} else {
-		response.json({ "status": "0", "message": "Invalid Address", "Balance": null });
+		response.json({ "status": "0", "message": "Invalid Address", "balance": null });
 
 	}
 
@@ -122,11 +122,11 @@ app.post('/api/v1/getLalaBalance', (request, response) => {
 	if (web3.utils.isAddress(ether_address)) {
 		//console.log(contractInstance);
 		contractInstance.methods.balanceOf(ether_address).call().then(function (res) {
-			response.json({ "status": "1", "message": "Request Successfully", "Balance": res });
+			response.json({ "status": "1", "message": "Request Successfully", "balance": res });
 		});
 
 	} else {
-		response.json({ "status": "0", "message": "Request Failed", "Balance": null });
+		response.json({ "status": "0", "message": "Request Failed", "balance": null });
 
 	}
 
@@ -217,19 +217,20 @@ app.post('/api/v1/getRecieptUsingTxnHash', (request, response) => {
 
 	web3.eth.getTransactionReceipt(txnHash)
 		.then(function (reciept) {
-
+		
+		if(reciept!=null)
+		{
 			web3.eth.getBlockNumber().then(function (blockNumber) {
 				const confirmationNumber = blockNumber - reciept.blockNumber;
-				if (reciept == null) {
-					response.json({ "status": "0", "message": "Your Transaction is Pending", "data": null });
+				 
+				response.json({ "status": "1", "message": "Request Successfully", "data": { "reciept": reciept, "confirmationNumber": confirmationNumber } });
+			});
 
-				} else {
-					response.json({ "status": "1", "message": "Request Successfully", "data": { "reciept": reciept, "confirmationNumber": confirmationNumber } });
+		}else{
 
-				}
-			})
+			response.json({ "status": "0", "message": "Your Transaction is Pending", "data": null });
 
-
+		}
 		});
 });
 
