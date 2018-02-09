@@ -13,6 +13,11 @@ var keythereum = require('keythereum');
 var fileSystem = require('fs');
 var Tx = require('ethereumjs-tx');
 var path = require('path');
+var bitcore = require('bitcore-lib');
+var bitcoinTransaction = require('bitcoin-transaction');
+var bitcoinjs = require('bitcoinjs-lib');
+const Client = require('bitcoin-core');
+const client = new Client({ network: 'regtest' });
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors());
@@ -20,10 +25,10 @@ app.use(cors());
 const contractAddress = "0xBE86986ddc061F2d340Ab915ce5a7bc41F856604";
 
 const contractInstance = new web3.eth.Contract(abi, contractAddress);
-contractInstance.setProvider(new Web3.providers.HttpProvider("https://ropsten.infura.io/YmYCywDkCUPHIqNSA1vk"));
+contractInstance.setProvider(new Web3.providers.HttpProvider("https://ropsten.infura.io/GyP8bkVWxmY9FNvv7IlJ"));
 
 // web3 provider
-web3 = new Web3(new Web3.providers.HttpProvider("https://ropsten.infura.io/YmYCywDkCUPHIqNSA1vk"));
+web3 = new Web3(new Web3.providers.HttpProvider("https://ropsten.infura.io/GyP8bkVWxmY9FNvv7IlJ"));
 
 
 // Rest API for generating 
@@ -59,7 +64,7 @@ app.post('/api/v1/generatePrivateKey', (request, response) => {
 	const EncryptedPrivateKey = CryptoJS.AES.encrypt(privateKey, token);
 	//console.log(EncryptedPrivateKey);
 	const EncryptedPrivateKeyString = EncryptedPrivateKey.toString();
-	console.log(EncryptedPrivateKeyString);
+	//console.log(EncryptedPrivateKeyString);
 	// const t= CircularJSON.parse(EncryptedPrivateKeyString);
 	// const u= CryptoJS.AES.decrypt(t,token);
 	// console.log("anurag");
@@ -104,11 +109,11 @@ app.post('/api/v1/getEtherBalance', (request, response) => {
 	const ether_address = request.body.etherAddress;
 	if (web3.utils.isAddress(ether_address)) {
 		const amount = web3.eth.getBalance(ether_address).then(function (amount) {
-			response.json({ "status": "1", "message": "Request Successfully", "balance": web3.utils.fromWei(amount, 'ether') });
+			response.json({ "status": "1", "message": "Request Successfully", "Balance": web3.utils.fromWei(amount, 'ether') });
 		});
 
 	} else {
-		response.json({ "status": "0", "message": "Invalid Address", "balance": null });
+		response.json({ "status": "0", "message": "Invalid Address", "Balance": null });
 
 	}
 
@@ -122,16 +127,15 @@ app.post('/api/v1/getLalaBalance', (request, response) => {
 	if (web3.utils.isAddress(ether_address)) {
 		//console.log(contractInstance);
 		contractInstance.methods.balanceOf(ether_address).call().then(function (res) {
-			response.json({ "status": "1", "message": "Request Successfully", "balance": res });
+			response.json({ "status": "1", "message": "Request Successfully", "Balance": res });
 		});
 
 	} else {
-		response.json({ "status": "0", "message": "Request Failed", "balance": null });
+		response.json({ "status": "0", "message": "Request Failed", "Balance": null });
 
 	}
 
 });
-
 
 // Rest API for sending ether 
 
@@ -141,30 +145,37 @@ app.post('/api/v1/sendEtherTransaction', (request, response) => {
 	const amount = request.body.amount;
 	const password = request.body.password;
 	const keyObject = request.body.keyObject;
+
 	const privateKey = web3.eth.accounts.decrypt(keyObject, password).privateKey;
 
 	const addressObject = web3.eth.accounts.privateKeyToAccount(privateKey);
 
 	const from = addressObject.address;
 
-	const tx = {
-		from: from,
-		gas: "21000",
-		to: to,
-		value: amount
-	};
+	web3.eth.getTransactionCount(from, 'pending')
+		.then(function (count) {
+			//console.log(count);
+			const tx = {
+				from: from,
+				gas: "300000",
+				to: to,
+				value: amount,
+				nonce: count
+			};
 
-	web3.eth.accounts.signTransaction(tx, privateKey).then(function (res) {
-		const rawtx = res.rawTransaction;
+			web3.eth.accounts.signTransaction(tx, privateKey).then(function (res) {
+				//console.log(res);
+				const rawtx = res.rawTransaction;
+				// console.log(rawtx);
+				web3.eth.sendSignedTransaction(rawtx)
+					.once('transactionHash', function (hash) {
+						response.json({ "status": "1", "message": "Request Successfully", "txnHash": hash });
+					})
 
-		web3.eth.sendSignedTransaction(rawtx)
-			.once('transactionHash', function (hash) {
-				response.json({ "status": "1", "message": "Request Successfully", "txnHash": hash });
-			}).on('error', function (error) {
-				response.json({ "status": "0", "message": "Request Failed", "data": error });
 			});
+		});
 
-	});
+
 
 
 
@@ -173,12 +184,7 @@ app.post('/api/v1/sendEtherTransaction', (request, response) => {
 // Rest API for Sending LALA token
 
 app.post('/api/v1/sendLalaTransaction', (request, response) => {
-	// const token = request.body.token;
 
-
-	// if (token == null) {
-	// 	response.json({ "status": "0", "message": "Please Provide Token", "from": null, "to": null, "amount": null, "EncryptedPrivateKeyString": null });
-	// }
 
 	const to = request.body.to;
 	const amount = request.body.amount;
@@ -189,24 +195,32 @@ app.post('/api/v1/sendLalaTransaction', (request, response) => {
 	const addressObject = web3.eth.accounts.privateKeyToAccount(privateKey);
 	const from = addressObject.address;
 	var encodedABI = contractInstance.methods.transfer(to, amount).encodeABI();
-	var tx = {
-		from: from,
-		to: contractAddress,
-		gas: 2000000,
-		data: encodedABI
-	};
 
-	web3.eth.accounts.signTransaction(tx, privateKey).then(signed => {
-		var tran = web3.eth.sendSignedTransaction(signed.rawTransaction);
 
-		tran.once('transactionHash', function (hash) {
-			response.json({ "status": "1", "message": "Request Successfully", "txnHash": hash });
+	web3.eth.getTransactionCount(from, 'pending')
+		.then(function (count) {
+
+			var tx = {
+				from: from,
+				to: contractAddress,
+				gas: 2000000,
+				data: encodedABI,
+				nonce:count
+			};
+
+			web3.eth.accounts.signTransaction(tx, privateKey).then(signed => {
+				var tran = web3.eth.sendSignedTransaction(signed.rawTransaction);
+
+				tran.once('transactionHash', function (hash) {
+					response.json({ "status": "1", "message": "Request Successfully", "txnHash": hash });
+				});
+
+				tran.on('error', error => {
+					response.json({ "status": "0", "message": "Request Failed", "data": null });
+				});
+			});
+
 		});
-
-		tran.on('error', error => {
-			response.json({ "status": "0", "message": "Request Failed", "data": null });
-		});
-	});
 
 
 });
@@ -217,54 +231,137 @@ app.post('/api/v1/getRecieptUsingTxnHash', (request, response) => {
 
 	web3.eth.getTransactionReceipt(txnHash)
 		.then(function (reciept) {
-		
-		if(reciept!=null)
-		{
+
 			web3.eth.getBlockNumber().then(function (blockNumber) {
 				const confirmationNumber = blockNumber - reciept.blockNumber;
-				 
-				response.json({ "status": "1", "message": "Request Successfully", "data": { "reciept": reciept, "confirmationNumber": confirmationNumber } });
-			});
+				if (reciept == null) {
+					response.json({ "status": "0", "message": "Your Transaction is Pending", "data": null });
 
-		}else{
+				} else {
+					response.json({ "status": "1", "message": "Request Successfully", "data": { "reciept": reciept, "confirmationNumber": confirmationNumber } });
 
-			response.json({ "status": "0", "message": "Your Transaction is Pending", "data": null });
+				}
+			})
 
-		}
+
 		});
 });
 
 // Rest API for importing PrivateKey
 
-// app.post('/api/v1/importPrivateKey', (request, response) => {
+app.post('/api/v1/importPrivateKey', (request, response) => {
 
-// 	const token = request.body.token;
+	const token = request.body.token;
 
-// 	if (token == null) {
-// 		response.json({ "status": "0", "message": "Please Provide Token", "data": "NULL" });
-// 	}
+	if (token == null) {
+		response.json({ "status": "0", "message": "Please Provide Token", "data": "NULL" });
+	}
 
-// 	const password = request.body.password;
-// 	//	console.log(password);
-// 	const EncryptedPrivateKeyString = request.body.EncryptedPrivateKeyString;
-// 	//console.log("a");
-// 	const EncryptedPrivateKey = JSON.parse(EncryptedPrivateKeyString);
-// 	// console.log("c");
-// 	const bytes = CryptoJS.AES.decrypt(EncryptedPrivateKey, token);
-// 	//	console.log(bytes);
+	const password = request.body.password;
+	const EncryptedPrivateKeyString = request.body.EncryptedPrivateKeyString;
+	const bytes = CryptoJS.AES.decrypt(EncryptedPrivateKeyString, token);
+	const privateKey = bytes.toString(CryptoJS.enc.Utf8);
 
-// 	const privateKey = bytes.toString(CryptoJS.enc.Utf8);
+	const addressObject = web3.eth.accounts.privateKeyToAccount(privateKey);
+	const keyObject = web3.eth.accounts.encrypt(privateKey, password);
 
-// 	const addressObject = web3.eth.accounts.privateKeyToAccount(privateKey);
-// 	const keyObject = web3.eth.accounts.encrypt(privateKey, password);
+	if (keyObject != null) {
+		response.json({ "status": "1", "message": "Request Successfully", "data": { "keyObject": keyObject, "etherAddress": addressObject.address } });
 
-// 	if (keyObject != null) {
-// 		response.json({ "status": "1", "message": "Request Successfully", "data": { "keyObject": keyObject, "etherAddress": addressObject.address } });
+	} else {
+		response.json({ "status": "0", "message": "Request Failed", "data": {} });
 
-// 	} else {
-// 		response.json({ "status": "0", "message": "Request Failed", "data": {} });
+	}
 
-// 	}
+
+
+});
+
+
+// Rest API for importing UTC file
+
+app.post('/api/v1/importUTCFile', (request, response) => {
+
+	const keyObject = request.body.keyObject;
+
+	if (!keyObject) {
+		response.json({ "status": "0", "message": "Please Provide UTC Content" });
+
+	}
+	const password = request.body.password;
+	const privateKey = web3.eth.accounts.decrypt(keyObject, password).privateKey;
+	const addressObject = web3.eth.accounts.privateKeyToAccount(privateKey);
+
+	if (privateKey != null) {
+
+		response.json({ "status": "1", "message": "Request Successfully", "data": { "keyObject": keyObject, "etherAddress": addressObject.address } });
+
+	} else {
+		response.json({ "status": "0", "message": "Request Failed", "data": {} });
+
+	}
+
+
+
+});
+
+
+// Rest API for Generating Bitcoin Address
+
+app.post('/api/v1/generateBitcoinKeys', (request, response) => {
+	const password = request.body.password;
+	const privateKey = new bitcore.PrivateKey();
+	const address = privateKey.toAddress().toString();
+	console.log(privateKey);
+	const EncryptedPrivateKey = CryptoJS.AES.encrypt(privateKey.toWIF(), password);
+	const EncryptedPrivateKeyString = EncryptedPrivateKey.toString();
+
+	if (address != null) {
+		response.json({ "status": "1", "message": "Request Successfully", "data": { "EncryptedPrivateKey": EncryptedPrivateKeyString, "bitcoinAddress": address } });
+	} else {
+		response.json({ "status": "0", "message": "Request Failed", "data": {} });
+	}
+
+
+});
+
+// Rest API for checking Bitcoin Balance
+app.post('/api/v1/checkBitcoinBalance', (request, response) => {
+
+	const address = request.body.address;
+
+	if (bitcore.Address.isValid(address)) {
+		bitcoinTransaction.getBalance(address, { network: "testnet" }).then((balanceInBTC) => {
+			response.json({ "status": "1", "message": "Request Successfully", "balance": balanceInBTC });
+		});
+	} else {
+		response.json({ "status": "0", "message": "Invalid Address", "balance": null });
+	}
+});
+
+// Rest Api for sending bitcoin transaction
+
+// app.post('/api/v1/sendBitcoinTransaction', (request, response) => {
+
+// 	var from = "myquJ14x6hsy36rM1Cd25E14zjwGJ1RiyM";
+// 	var to = "mgPUfqJk4X6gE4P5Do5RfpkTFsYmsSjCya";
+// 	var privKeyWIF = "4962e72408be771d4f002716635e0da30056351f6f1ff706b8df8181e27f050f";	//Private key in WIF form (Can generate this from bitcoinlib-js)
+// 	var utxo = {
+// 		"txId": "115e8f72f39fad874cfab0deed11a80f24f967a84079fb56ddf53ea02e308987",
+// 		"outputIndex": 0,
+// 		"address": from,
+// 		"script": "76a91447862fe165e6121af80d5dde1ecb478ed170565b88ac",
+// 		"satoshis": 50000
+// 	};
+// 	var transaction = new bitcore.Transaction()
+// 		.from(utxo)
+// 		.to(to, 1)
+// 		.sign(privKeyWIF);
+
+// 	client.sendRawTransaction(transaction.toString(), (error, response) => {
+// 		if (error) console.log(error);
+// 		console.log(response);
+// 	});
 
 
 
@@ -276,5 +373,5 @@ const port = 3002;
 
 app.listen(port, hostname, () => {
 	console.log(`server is running at http://${hostname}:${port}`);
-})
+});
 
