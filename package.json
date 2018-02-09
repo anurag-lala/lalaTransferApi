@@ -11,6 +11,10 @@
   "license": "MIT",
   "dependencies": {
     "ajax": "0.0.4",
+    "bitcoin-core": "^2.0.0",
+    "bitcoin-transaction": "^1.1.0",
+    "bitcoinjs-lib": "^3.3.2",
+    "bitcore-lib": "^0.15.0",
     "body-parser": "^1.18.2",
     "buffer-to-string": "^0.1.0",
     "circular-json": "^0.5.1",
@@ -20,6 +24,7 @@
     "express": "^4.16.2",
     "jquery": "^3.2.1",
     "keythereum": "^1.0.2",
+    "request": "^2.83.0",
     "web3": "^1.0.0-beta.18"
   }
 }
